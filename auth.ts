@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
+import { Capacitor } from "@capacitor/core";
+import { FirebaseAuthentication } from "@capacitor-firebase/authentication";
 import {
   GoogleAuthProvider,
   getRedirectResult,
+  signInWithCredential,
   onAuthStateChanged,
   signInWithPopup,
   signInWithRedirect,
@@ -57,6 +60,19 @@ function authErrorMessage(code?: string, fallback?: string) {
   }
 }
 
+// Login Google native (di APK). WebView tidak mendukung popup/redirect Google, jadi pakai dialog akun bawaan Android.
+const isNativeApp = () => Capacitor.isNativePlatform();
+
+function nativeErrorMessage(e: any) {
+  const msg = String(e?.message || e?.code || e || "");
+  if (/cancel|dismiss|12501|-5\b/i.test(msg)) return ""; // dibatalkan user: diam saja
+  if (/28444|developer console|\b10\b|12500|sha|client id|no credential|NoCredential/i.test(msg)) {
+    return "Login Google belum cocok dengan pengaturan Firebase.\n\nPastikan SHA-1 keystore sudah ditambahkan di Firebase (app Android com.wilka.app), lalu unduh ulang google-services.json dan build ulang APK.\n\nDetail: " + msg;
+  }
+  if (/network|timeout/i.test(msg)) return "Koneksi internet bermasalah. Coba lagi.";
+  return "Login gagal: " + msg;
+}
+
 // Harus sama dengan email di firestore.rules
 export const ADMIN_EMAILS = ["wilkaaffah@gmail.com"];
 
@@ -76,7 +92,9 @@ export function useAuth() {
 
   useEffect(() => {
     if (!auth) return;
-    getRedirectResult(auth).catch(e => window.alert(authErrorMessage(e?.code, e?.message)));
+    if (!isNativeApp()) {
+      getRedirectResult(auth).catch(e => window.alert(authErrorMessage(e?.code, e?.message)));
+    }
     return onAuthStateChanged(auth, u => {
       if (!u) {
         setUser(null);
@@ -100,6 +118,19 @@ export function useAuth() {
   // true = berhasil login (popup). false = batal / gagal / pindah halaman (redirect)
   const signInWithGoogle = useCallback(async (path?: string): Promise<boolean> => {
     if (!auth) return false;
+    if (isNativeApp()) {
+      try {
+        const res = await FirebaseAuthentication.signInWithGoogle({ skipNativeAuth: true });
+        const idToken = res.credential?.idToken;
+        if (!idToken) throw new Error("Token Google kosong");
+        await signInWithCredential(auth, GoogleAuthProvider.credential(idToken));
+        return true;
+      } catch (e: any) {
+        const m = nativeErrorMessage(e);
+        if (m) window.alert(m);
+        return false;
+      }
+    }
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: "select_account" });
     try {
