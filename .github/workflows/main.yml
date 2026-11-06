@@ -29,6 +29,35 @@ jobs:
       - name: Buat project Android
         run: npx cap add android
 
+      - name: Konfigurasi Google Sign-In
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("android/variables.gradle")
+
+          if not path.exists():
+              raise SystemExit("android/variables.gradle tidak ditemukan")
+
+          content = path.read_text()
+
+          if "rgcfaIncludeGoogle" not in content:
+              if "ext {" not in content:
+                  raise SystemExit("Blok ext { tidak ditemukan")
+
+              content = content.replace(
+                  "ext {",
+                  "ext {\n"
+                  "    rgcfaIncludeGoogle = true\n"
+                  "    androidxCredentialsVersion = '1.3.0'",
+                  1
+              )
+
+              path.write_text(content)
+
+          print("Konfigurasi Google Sign-In berhasil dipasang.")
+          PY
+
       - name: Pasang logo (jika ada assets/icon.png)
         if: hashFiles('assets/icon.png') != ''
         run: npx @capacitor/assets generate --android
