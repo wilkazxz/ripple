@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "438856552676-vn4arl1lavu197l0oqr38m8qlb1gfdsg.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.wilka.app",
+            "certificate_hash": "a0802b0b99cf07a69eef89f5553ca806fbf72fb7"
+          }
+        },
+        {
           "client_id": "438856552676-lseracsdb47thtlvkqc7lm9qmlqua5g8.apps.googleusercontent.com",
           "client_type": 3
         }
