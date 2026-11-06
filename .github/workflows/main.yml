@@ -23,6 +23,13 @@ jobs:
       - name: Pasang logo (jika ada assets/icon.png)
         if: hashFiles('assets/icon.png') != ''
         run: npx @capacitor/assets generate --android
+      - name: Pasang google-services.json (wajib untuk login Google)
+        run: |
+          if [ ! -f google-services.json ]; then
+            echo "::error::google-services.json belum ada di root repo. Unduh dari Firebase Console > Project settings > app Android (com.wilka.app)."
+            exit 1
+          fi
+          cp google-services.json android/app/google-services.json
       - name: Sync
         run: npx cap sync android
       - name: Pakai kunci tetap (supaya APK bisa di-update tanpa uninstall)
