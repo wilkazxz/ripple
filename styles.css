@@ -712,7 +712,7 @@ html, body { background-color: #f4faff; }
 input, textarea, select { accent-color: #4aa8ec; caret-color: #4aa8ec; }
 
 /* ===================== FLOQ: top bar, susunan post, tombol ===================== */
-:root { --floq-bg: #002631; --floq-green: #aef097; --floq-col: 760px; }
+:root { --floq-bg: #002631; --floq-col: 760px; }
 @media (min-width: 900px) { :root { --floq-col: 1100px; } }
 
 /* Top bar gelap: logo + FLOQ di kiri, cari / notifikasi / profil di kanan */
@@ -726,14 +726,13 @@ input, textarea, select { accent-color: #4aa8ec; caret-color: #4aa8ec; }
   box-shadow: 0 1px 0 rgba(255, 255, 255, .06);
 }
 .mobile-topbar::before { display: none !important; }
-.mobile-topbar .brand-lockup { gap: 12px; color: var(--floq-green); }
-.mobile-topbar .brand-mark, .brand-mark { width: 32px; height: 32px; flex: none; display: block; color: var(--floq-green); }
+.mobile-topbar .brand-lockup { gap: 12px; }
 .mobile-topbar .brand-icon { width: 34px; height: 34px; border-radius: 9px; }
-.mobile-topbar .brand-wordmark { font: 700 28px/1 Outfit, var(--head); letter-spacing: .01em; color: var(--floq-green); }
+.mobile-topbar .brand-wordmark { font: 700 22px/1 var(--head); letter-spacing: .02em; color: #fff; }
 .topbar-actions { display: flex; align-items: center; gap: 2px; }
 .topbar-icon { width: 44px; height: 44px; padding: 0; display: grid; place-items: center; border: 0; border-radius: 50%; background: none; color: #fff; cursor: pointer; transition: background .15s ease; }
 .topbar-icon:hover, .topbar-icon:active { background: rgba(255, 255, 255, .12); }
-.topbar-icon:focus-visible { outline: 2px solid var(--floq-green); outline-offset: 0; }
+.topbar-icon:focus-visible { outline: 2px solid #fff; outline-offset: 0; }
 
 /* Kartu post: profil (nama + waktu) -> caption -> foto -> tag -> tombol aksi */
 .media-card > * { order: 0 !important; }

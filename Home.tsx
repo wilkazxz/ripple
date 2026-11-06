@@ -194,21 +194,17 @@ function formatBytes(bytes: number) {
   return `${(bytes / Math.pow(1024, index)).toFixed(index ? 1 : 0)} ${units[index]}`;
 }
 
-// Logo FLOQ: 6 daun melengkung tersusun tangga (digambar SVG, warna ikut CSS)
-function BrandMark() {
-  const cells = [[0, 0], [155, 0], [310, 0], [0, 155], [155, 155], [0, 310]];
-  return (
-    <svg className="brand-mark" viewBox="0 0 450 450" aria-hidden="true">
-      {cells.map(([x, y]) => <path key={`${x}-${y}`} transform={`translate(${x} ${y})`} d="M0 0H140V140H134A134 134 0 0 0 0 6Z" fill="currentColor" />)}
-    </svg>
-  );
-}
-
 function Logo() {
   const { site } = useSite();
   return (
     <Link href="/" className="brand-lockup" aria-label={`${site.name} home`}>
-      {site.icon ? <img className="brand-icon" src={site.icon} alt="" /> : <BrandMark />}
+      {site.icon ? (
+        <img className="brand-icon" src={site.icon} alt="" />
+      ) : (
+        <span className="brand-orbit">
+          <span />
+        </span>
+      )}
       <span className="brand-wordmark">{site.name.toUpperCase()}</span>
     </Link>
   );
@@ -618,7 +614,7 @@ export default function Home() {
         {location === "/" && <SpotlightCarousel />}
         <header className="topbar">
           <div className="topbar__crumb">
-            <span>FLOQ</span>
+            <span>WILKAXYZ</span>
             <span className="crumb-dot">/</span>
             <strong>{page.eyebrow.toLowerCase()}</strong>
           </div>
@@ -643,7 +639,7 @@ export default function Home() {
         </header>
 
         {location !== "/settings" && location !== "/collections" && canUpload && !uploadOpen && <section className="compose-row" onClick={openUpload}><div className="avatar avatar--lime">{myPhoto ? <img src={myPhoto} alt="" referrerPolicy="no-referrer" /> : (user?.name?.charAt(0) || "W").toUpperCase()}</div><span className="compose-row__text">Ada yang ingin dibagikan?</span><button className="primary-button" type="button">Unggah</button></section>}
-        {uploadOpen && canUpload && <UploadPanel onClose={closeUpload} onUpload={handleUpload} userName={user?.name || "Pengguna"} userPhoto={myPhoto} />}
+        {uploadOpen && canUpload && <UploadPanel onClose={closeUpload} onUpload={handleUpload} userName={user?.name || "Wilkaxyz"} userPhoto={myPhoto} />}
 
         {location === "/collections" ? (
           <section className="collections-grid">
