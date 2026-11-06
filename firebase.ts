@@ -6,6 +6,7 @@ import { getFirestore } from "firebase/firestore";
 // firestore.rules dan daftar Authorized domains. Env VITE_FIREBASE_* (kalau diisi)
 // akan menimpa nilai bawaan di bawah ini.
 const env = import.meta.env;
+
 const config = {
   apiKey: (env.VITE_FIREBASE_API_KEY as string) || "AIzaSyDZ4pmydWBKG6vFKbaTvefjdj-i_X-WBvw",
   authDomain: (env.VITE_FIREBASE_AUTH_DOMAIN as string) || "wilkaxyz-86d8f.firebaseapp.com",

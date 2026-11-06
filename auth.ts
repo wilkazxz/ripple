@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   GoogleAuthProvider,
   onAuthStateChanged,
+  getRedirectResult,
   signInWithPopup,
   signInWithRedirect,
   signOut as fbSignOut,
@@ -54,6 +55,14 @@ export function useAuth() {
 
   useEffect(() => {
     if (!auth) return;
+    // Tangkap hasil/error setelah kembali dari halaman login Google (alur redirect)
+    getRedirectResult(auth).catch((e: any) => {
+      if (e?.code === "auth/unauthorized-domain") {
+        window.alert(`Login gagal: domain "${window.location.hostname}" belum didaftarkan di Firebase (Authorized domains).`);
+      } else if (e?.code) {
+        window.alert(`Login gagal: ${e.message || e.code}`);
+      }
+    });
     return onAuthStateChanged(auth, u => {
       if (!u) {
         setUser(null);
@@ -90,6 +99,13 @@ export function useAuth() {
         return false;
       }
       if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+        return false;
+      }
+      if (code === "auth/unauthorized-domain") {
+        window.alert(
+          `Login gagal: domain "${window.location.hostname}" belum didaftarkan di Firebase.\n\n` +
+            `Buka Firebase Console > Authentication > Settings > Authorized domains, lalu tambahkan domain ini.`
+        );
         return false;
       }
       window.alert(`Login gagal: ${e?.message || "coba lagi"}`);
