@@ -1,46 +1,66 @@
 name: Build APK
+
 on:
   push:
   workflow_dispatch:
+
 jobs:
   apk:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 21
+
       - name: Install
         run: npm install
+
       - name: Build web
         run: npm run build
+
       - name: Buat project Android
         run: npx cap add android
+
       - name: Pasang logo (jika ada assets/icon.png)
         if: hashFiles('assets/icon.png') != ''
         run: npx @capacitor/assets generate --android
-      - name: Pasang google-services.json (wajib untuk login Google)
+
+      - name: Pasang google-services.json
         run: |
           if [ ! -f google-services.json ]; then
-            echo "::error::google-services.json belum ada di root repo. Unduh dari Firebase Console > Project settings > app Android (com.wilka.app)."
+            echo "::error::google-services.json belum ada di root repo."
             exit 1
           fi
           cp google-services.json android/app/google-services.json
+
       - name: Sync
         run: npx cap sync android
-      - name: Pakai kunci tetap (supaya APK bisa di-update tanpa uninstall)
+
+      - name: Pakai kunci tetap
         run: |
           mkdir -p ~/.android
           cp debug.keystore ~/.android/debug.keystore
+
+      - name: Ambil SHA-1
+        run: |
+          keytool -list -v \
+            -keystore ~/.android/debug.keystore \
+            -storepass android
+
       - name: Build APK
         working-directory: android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug
+
       - uses: actions/upload-artifact@v4
         with:
           name: RIPPLE-apk
