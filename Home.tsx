@@ -792,9 +792,9 @@ export default function Home() {
       {(loginOpen || (uploadOpen && !canUpload && !authLoading)) && (
         <LoginModal
           onClose={closeLogin}
-          onGoogle={async (): Promise<string> => {
+          onGoogle={async (onLog: (m: string) => void): Promise<string> => {
             let err = "";
-            const ok = await signInWithGoogle("/upload", m => { err = m; });
+            const ok = await signInWithGoogle("/upload", m => { err = m; }, onLog);
             if (ok) {
               setLoginOpen(false);
               setUploadOpen(true);
@@ -818,21 +818,31 @@ function LoginModal({
   onGoogle,
 }: {
   onClose: () => void;
-  onGoogle: () => Promise<string>;
+  onGoogle: (onLog: (m: string) => void) => Promise<string>;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [logs, setLogs] = useState<string[]>([]);
+  const runId = useRef(0);
   const run = async () => {
     if (busy) return;
+    const id = ++runId.current;
     setBusy(true);
     setError("");
+    setLogs([]);
     try {
-      setError((await onGoogle()) || "");
+      const msg = await onGoogle(m => { if (runId.current === id) setLogs(l => [...l, m]); });
+      if (runId.current === id) setError(msg || "");
     } catch (e: any) {
-      setError("Login gagal: " + String(e?.message || e));
+      if (runId.current === id) setError("Login gagal: " + String(e?.message || e));
     } finally {
-      setBusy(false);
+      if (runId.current === id) setBusy(false);
     }
+  };
+  const cancel = () => {
+    runId.current++;
+    setBusy(false);
+    setError("Dibatalkan. Kalau dialog Google tidak pernah muncul, kirim isi Detail teknis di bawah ke pengembang.");
   };
   return (
     <div className="login-overlay" role="dialog" aria-modal="true" onClick={onClose}>
@@ -851,7 +861,9 @@ function LoginModal({
           </svg>
           {busy ? "Membuka akun Google..." : "Lanjutkan dengan Google"}
         </button>
+        {busy && <button className="login-skip" onClick={cancel}>Batal</button>}
         {error && <p className="login-error" role="alert">{error}</p>}
+        {logs.length > 0 && (busy || error) && <pre className="login-log">{"Detail teknis:\n" + logs.join("\n")}</pre>}
         <button className="login-skip" onClick={onClose}>
           Nanti saja
         </button>

@@ -64,13 +64,21 @@ function authErrorMessage(code?: string, fallback?: string) {
 const isNativeApp = () => Capacitor.isNativePlatform();
 
 const CANCELLED = "Login dibatalkan.";
-const NATIVE_TIMEOUT_MS = 90_000;
+const NATIVE_TIMEOUT_MS = 45_000;
 
 // Jika onError diberikan, pesan ditampilkan di dalam aplikasi (modal). Jika tidak, pakai alert.
 function report(msg: string, onError?: (m: string) => void) {
   if (!msg) return;
   if (onError) onError(msg);
   else if (msg !== CANCELLED) window.alert(msg);
+}
+
+function describeError(e: any) {
+  try {
+    return JSON.stringify({ code: e?.code, name: e?.name, message: e?.message ?? String(e) }).slice(0, 400);
+  } catch {
+    return String(e).slice(0, 400);
+  }
 }
 
 function nativeErrorMessage(e: any, elapsedMs: number) {
@@ -139,23 +147,34 @@ export function useAuth() {
 
   // true = berhasil login. false = batal / gagal / pindah halaman (redirect)
   // onError (opsional): terima pesan error untuk ditampilkan di UI; tanpa itu dipakai window.alert
-  const signInWithGoogle = useCallback(async (path?: string, onError?: (msg: string) => void): Promise<boolean> => {
+  const signInWithGoogle = useCallback(async (path?: string, onError?: (msg: string) => void, onLog?: (msg: string) => void): Promise<boolean> => {
     if (!auth) return false;
     if (isNativeApp()) {
       const started = Date.now();
+      const log = (m: string) => {
+        try { onLog?.(`${((Date.now() - started) / 1000).toFixed(1)}s  ${m}`); } catch { /* abaikan */ }
+      };
+      log(`platform=${Capacitor.getPlatform()}, plugin tersedia=${Capacitor.isPluginAvailable("FirebaseAuthentication")}`);
+      log("memanggil dialog akun Google...");
+      const slow = window.setTimeout(() => log("belum ada respons >6 detik (dialog Google tidak muncul?)"), 6000);
       try {
         const res = await Promise.race([
           FirebaseAuthentication.signInWithGoogle({ skipNativeAuth: true }),
           new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error("TIMEOUT")), NATIVE_TIMEOUT_MS)),
         ]);
+        log("Google merespons, memeriksa token");
         const idToken = res.credential?.idToken;
         if (!idToken) throw new Error("Token Google kosong");
         await signInWithCredential(auth, GoogleAuthProvider.credential(idToken));
+        log("login Firebase berhasil");
         return true;
       } catch (e: any) {
         console.error("[login] native google gagal", e);
+        log("ERROR " + describeError(e));
         report(nativeErrorMessage(e, Date.now() - started), onError);
         return false;
+      } finally {
+        window.clearTimeout(slow);
       }
     }
     const provider = new GoogleAuthProvider();
