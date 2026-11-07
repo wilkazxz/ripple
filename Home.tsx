@@ -1,6 +1,6 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent } from "react";
 import { Link, useLocation } from "wouter";
-import { useAuth, authEnabled } from "./auth";
+import { useAuth, authEnabled, isNative, type NativeMethod } from "./auth";
 import { useInstall, detectPlatform } from "./pwa";
 import { useSite } from "./site";
 import { useProfiles, saveProfile, removeProfilePhoto } from "./profiles";
@@ -792,9 +792,9 @@ export default function Home() {
       {(loginOpen || (uploadOpen && !canUpload && !authLoading)) && (
         <LoginModal
           onClose={closeLogin}
-          onGoogle={async (onLog: (m: string) => void): Promise<string> => {
+          onGoogle={async (onLog: (m: string) => void, method: NativeMethod): Promise<string> => {
             let err = "";
-            const ok = await signInWithGoogle("/upload", m => { err = m; }, onLog);
+            const ok = await signInWithGoogle("/upload", m => { err = m; }, onLog, method);
             if (ok) {
               setLoginOpen(false);
               setUploadOpen(true);
@@ -818,20 +818,20 @@ function LoginModal({
   onGoogle,
 }: {
   onClose: () => void;
-  onGoogle: (onLog: (m: string) => void) => Promise<string>;
+  onGoogle: (onLog: (m: string) => void, method: NativeMethod) => Promise<string>;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [logs, setLogs] = useState<string[]>([]);
   const runId = useRef(0);
-  const run = async () => {
+  const run = async (method: NativeMethod = "oauth") => {
     if (busy) return;
     const id = ++runId.current;
     setBusy(true);
     setError("");
     setLogs([]);
     try {
-      const msg = await onGoogle(m => { if (runId.current === id) setLogs(l => [...l, m]); });
+      const msg = await onGoogle(m => { if (runId.current === id) setLogs(l => [...l, m]); }, method);
       if (runId.current === id) setError(msg || "");
     } catch (e: any) {
       if (runId.current === id) setError("Login gagal: " + String(e?.message || e));
@@ -852,16 +852,17 @@ function LoginModal({
           Melihat koleksi tidak perlu login. Untuk upload, kamu perlu masuk
           dengan akun Google.
         </p>
-        <button className="google-button" onClick={() => void run()} disabled={busy} aria-busy={busy}>
+        <button className="google-button" onClick={() => void run("oauth")} disabled={busy} aria-busy={busy}>
           <svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true">
             <path fill="#4aa8ec" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
             <path fill="#6cbcf2" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
             <path fill="#8ccbf8" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
             <path fill="#5ab3ee" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
           </svg>
-          {busy ? "Membuka akun Google..." : "Lanjutkan dengan Google"}
+          {busy ? "Membuka login Google..." : "Lanjutkan dengan Google"}
         </button>
         {busy && <button className="login-skip" onClick={cancel}>Batal</button>}
+        {!busy && error && isNative() && <button className="login-skip" onClick={() => void run("credential")}>Coba cara lain (dialog akun Google)</button>}
         {error && <p className="login-error" role="alert">{error}</p>}
         {logs.length > 0 && (busy || error) && <pre className="login-log">{"Detail teknis:\n" + logs.join("\n")}</pre>}
         <button className="login-skip" onClick={onClose}>

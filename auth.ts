@@ -62,9 +62,13 @@ function authErrorMessage(code?: string, fallback?: string) {
 
 // Login Google native (di APK). WebView tidak mendukung popup/redirect Google, jadi pakai dialog akun bawaan Android.
 const isNativeApp = () => Capacitor.isNativePlatform();
+export const isNative = isNativeApp;
+// "oauth" = login lewat browser (Custom Tab), paling andal. "credential" = dialog akun Google bawaan Android.
+export type NativeMethod = "oauth" | "credential";
 
 const CANCELLED = "Login dibatalkan.";
-const NATIVE_TIMEOUT_MS = 45_000;
+const CREDENTIAL_TIMEOUT_MS = 45_000;
+const OAUTH_TIMEOUT_MS = 180_000;
 
 // Jika onError diberikan, pesan ditampilkan di dalam aplikasi (modal). Jika tidak, pakai alert.
 function report(msg: string, onError?: (m: string) => void) {
@@ -87,6 +91,9 @@ function nativeErrorMessage(e: any, elapsedMs: number) {
   if (code.startsWith("auth/")) return authErrorMessage(code, e?.message); // gagal di sisi Firebase JS
   if (msg === "TIMEOUT") {
     return "Tidak ada respons dari Google.\n\nPastikan HP punya akun Google, Google Play Services aktif, dan koneksi internet normal. Lalu coba lagi.";
+  }
+  if (/invalid-cert-hash|app-not-authorized|SHA-?1|certificate/i.test(msg)) {
+    return "SHA-1 aplikasi belum cocok dengan Firebase.\n\nFirebase Console > Project settings > app Android com.wilka.app > Add fingerprint (SHA-1 dari APK), unduh ulang google-services.json, lalu build ulang APK.\n\nDetail: " + msg;
   }
   if (/28444|developer console|\b10\b|12500|sha|client id|no credential|NoCredential/i.test(msg)) {
     return "Login Google belum cocok dengan pengaturan Firebase.\n\nPastikan SHA-1 keystore sudah ditambahkan di Firebase (app Android com.wilka.app), lalu unduh ulang google-services.json dan build ulang APK.\n\nDetail: " + msg;
@@ -147,25 +154,35 @@ export function useAuth() {
 
   // true = berhasil login. false = batal / gagal / pindah halaman (redirect)
   // onError (opsional): terima pesan error untuk ditampilkan di UI; tanpa itu dipakai window.alert
-  const signInWithGoogle = useCallback(async (path?: string, onError?: (msg: string) => void, onLog?: (msg: string) => void): Promise<boolean> => {
+  const signInWithGoogle = useCallback(async (path?: string, onError?: (msg: string) => void, onLog?: (msg: string) => void, method: NativeMethod = "oauth"): Promise<boolean> => {
     if (!auth) return false;
     if (isNativeApp()) {
       const started = Date.now();
       const log = (m: string) => {
         try { onLog?.(`${((Date.now() - started) / 1000).toFixed(1)}s  ${m}`); } catch { /* abaikan */ }
       };
-      log(`platform=${Capacitor.getPlatform()}, plugin tersedia=${Capacitor.isPluginAvailable("FirebaseAuthentication")}`);
-      log("memanggil dialog akun Google...");
-      const slow = window.setTimeout(() => log("belum ada respons >6 detik (dialog Google tidak muncul?)"), 6000);
+      const timeoutMs = method === "oauth" ? OAUTH_TIMEOUT_MS : CREDENTIAL_TIMEOUT_MS;
+      log(`platform=${Capacitor.getPlatform()}, plugin tersedia=${Capacitor.isPluginAvailable("FirebaseAuthentication")}, cara=${method}`);
+      log(method === "oauth" ? "membuka halaman login Google (browser)..." : "memanggil dialog akun Google...");
+      const slow = window.setTimeout(() => log(`belum ada respons >8 detik (${method === "oauth" ? "browser tidak terbuka?" : "dialog Google tidak muncul?"})`), 8000);
       try {
+        const call =
+          method === "oauth"
+            ? FirebaseAuthentication.signInWithOAuth({
+                providerId: "google.com",
+                skipNativeAuth: true,
+                customParameters: [{ key: "prompt", value: "select_account" }],
+              } as any)
+            : FirebaseAuthentication.signInWithGoogle({ skipNativeAuth: true });
         const res = await Promise.race([
-          FirebaseAuthentication.signInWithGoogle({ skipNativeAuth: true }),
-          new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error("TIMEOUT")), NATIVE_TIMEOUT_MS)),
+          call,
+          new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error("TIMEOUT")), timeoutMs)),
         ]);
-        log("Google merespons, memeriksa token");
         const idToken = res.credential?.idToken;
-        if (!idToken) throw new Error("Token Google kosong");
-        await signInWithCredential(auth, GoogleAuthProvider.credential(idToken));
+        const accessToken = res.credential?.accessToken;
+        log(`Google merespons: idToken=${!!idToken}, accessToken=${!!accessToken}`);
+        if (!idToken && !accessToken) throw new Error("Token Google kosong");
+        await signInWithCredential(auth, GoogleAuthProvider.credential(idToken ?? null, accessToken ?? null));
         log("login Firebase berhasil");
         return true;
       } catch (e: any) {
