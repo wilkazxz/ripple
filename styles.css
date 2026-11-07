@@ -777,3 +777,7 @@ input, textarea, select { accent-color: #4aa8ec; caret-color: #4aa8ec; }
 .mobile-dock a.is-active { color: #2f86c4 !important; }
 .avatar--lime, .avatar--dark { background: linear-gradient(135deg, #e4f3ff, #93cdf8); color: #0f2233; }
 .icon-button--small { background: transparent !important; border: 0 !important; color: #7a9bb5; }
+
+/* login: status loading + pesan error di dalam modal */
+.google-button:disabled { opacity: .65; cursor: progress; }
+.login-card .login-error { margin: 12px 0 0; padding: 10px 12px; border-radius: 14px; background: #fff1f0; color: #b42318; font-size: 12.5px; line-height: 1.45; text-align: left; white-space: pre-line; word-break: break-word; }

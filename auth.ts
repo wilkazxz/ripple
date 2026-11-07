@@ -63,11 +63,33 @@ function authErrorMessage(code?: string, fallback?: string) {
 // Login Google native (di APK). WebView tidak mendukung popup/redirect Google, jadi pakai dialog akun bawaan Android.
 const isNativeApp = () => Capacitor.isNativePlatform();
 
-function nativeErrorMessage(e: any) {
+const CANCELLED = "Login dibatalkan.";
+const NATIVE_TIMEOUT_MS = 90_000;
+
+// Jika onError diberikan, pesan ditampilkan di dalam aplikasi (modal). Jika tidak, pakai alert.
+function report(msg: string, onError?: (m: string) => void) {
+  if (!msg) return;
+  if (onError) onError(msg);
+  else if (msg !== CANCELLED) window.alert(msg);
+}
+
+function nativeErrorMessage(e: any, elapsedMs: number) {
   const msg = String(e?.message || e?.code || e || "");
-  if (/cancel|dismiss|12501|-5\b/i.test(msg)) return ""; // dibatalkan user: diam saja
+  const code = typeof e?.code === "string" ? e.code : "";
+  if (code.startsWith("auth/")) return authErrorMessage(code, e?.message); // gagal di sisi Firebase JS
+  if (msg === "TIMEOUT") {
+    return "Tidak ada respons dari Google.\n\nPastikan HP punya akun Google, Google Play Services aktif, dan koneksi internet normal. Lalu coba lagi.";
+  }
   if (/28444|developer console|\b10\b|12500|sha|client id|no credential|NoCredential/i.test(msg)) {
     return "Login Google belum cocok dengan pengaturan Firebase.\n\nPastikan SHA-1 keystore sudah ditambahkan di Firebase (app Android com.wilka.app), lalu unduh ulang google-services.json dan build ulang APK.\n\nDetail: " + msg;
+  }
+  if (/cancel|dismiss|12501|-5\b/i.test(msg)) {
+    // Dialog yang menutup sendiri dalam hitungan detik biasanya BUKAN dibatalkan user,
+    // melainkan konfigurasi SHA-1 / google-services.json belum cocok. Jangan diam saja.
+    if (elapsedMs < 2000) {
+      return "Dialog akun Google tertutup sendiri.\n\nBiasanya karena SHA-1 APK belum terdaftar di Firebase / google-services.json belum diperbarui, atau HP belum punya akun Google.\n\nDetail: " + msg;
+    }
+    return CANCELLED;
   }
   if (/network|timeout/i.test(msg)) return "Koneksi internet bermasalah. Coba lagi.";
   return "Login gagal: " + msg;
@@ -115,19 +137,24 @@ export function useAuth() {
     });
   }, []);
 
-  // true = berhasil login (popup). false = batal / gagal / pindah halaman (redirect)
-  const signInWithGoogle = useCallback(async (path?: string): Promise<boolean> => {
+  // true = berhasil login. false = batal / gagal / pindah halaman (redirect)
+  // onError (opsional): terima pesan error untuk ditampilkan di UI; tanpa itu dipakai window.alert
+  const signInWithGoogle = useCallback(async (path?: string, onError?: (msg: string) => void): Promise<boolean> => {
     if (!auth) return false;
     if (isNativeApp()) {
+      const started = Date.now();
       try {
-        const res = await FirebaseAuthentication.signInWithGoogle({ skipNativeAuth: true });
+        const res = await Promise.race([
+          FirebaseAuthentication.signInWithGoogle({ skipNativeAuth: true }),
+          new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error("TIMEOUT")), NATIVE_TIMEOUT_MS)),
+        ]);
         const idToken = res.credential?.idToken;
         if (!idToken) throw new Error("Token Google kosong");
         await signInWithCredential(auth, GoogleAuthProvider.credential(idToken));
         return true;
       } catch (e: any) {
-        const m = nativeErrorMessage(e);
-        if (m) window.alert(m);
+        console.error("[login] native google gagal", e);
+        report(nativeErrorMessage(e, Date.now() - started), onError);
         return false;
       }
     }
@@ -146,7 +173,7 @@ export function useAuth() {
       if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
         return false;
       }
-      window.alert(authErrorMessage(code, e?.message));
+      report(authErrorMessage(code, e?.message), onError);
       return false;
     }
   }, []);
