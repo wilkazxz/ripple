@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "438856552676",
+    "project_id": "wilkaxyz-86d8f",
+    "storage_bucket": "wilkaxyz-86d8f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:438856552676:android:124ab5a75e524e39985cf1",
+        "android_client_info": {
+          "package_name": "com.wilka.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "438856552676-cgqr3ps96qk1jagbaas9o04t88bp73q9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.wilka.app",
+            "certificate_hash": "75d65463969ca2bc9cc096e984d50d01f5987750"
+          }
+        },
+        {
+          "client_id": "438856552676-lseracsdb47thtlvkqc7lm9qmlqua5g8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB-8OCc4J1hemJ1rVxKHtLTkC1texge6qI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "438856552676-lseracsdb47thtlvkqc7lm9qmlqua5g8.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
